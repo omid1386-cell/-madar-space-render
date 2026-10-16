@@ -1,4 +1,4 @@
-const VERSION = '0.9.0';
+const VERSION = '0.18.0';
 const STATIC_CACHE = `madar-static-${VERSION}`;
 const DATA_CACHE = `madar-data-${VERSION}`;
 const IMAGE_CACHE = `madar-images-${VERSION}`;
@@ -6,9 +6,9 @@ const BASE_URL = self.registration.scope;
 const asset = path => new URL(String(path).replace(/^\/+/, ''), BASE_URL).toString();
 
 const APP_SHELL_PATHS = [
-  '/', '/index.html', '/offline.html', '/manifest.webmanifest', '/styles.css', '/app.js',
+  '/', '/index.html', '/offline.html', '/manifest.webmanifest', '/styles-v0.18.css', '/app-v0.18.js',
   '/data.js', '/launch-detail.js', '/orbit-detail.js', '/learning-content.js',
-  '/satellite-data.js', '/knowledge-data.js', '/terminology-data.js', '/failure-causes.js',
+  '/orbital-mechanics-stable.js', '/orbital-mechanics-course.js', '/orbital-mechanics-phase2.js', '/orbital-mechanics-phase3.js', '/orbital-mechanics-phase4.js', '/orbital-mechanics-phase5.js', '/orbital-phase5-math.js', '/orbital-labs.js', '/satellite-data.js', '/knowledge-data.js', '/terminology-data.js', '/failure-causes.js',
   '/agency-feed-fallback.json', '/launches-fallback.json', '/failures-fallback.json',
   '/fonts/Vazirmatn-UI-Regular.woff2', '/fonts/Vazirmatn-UI-Medium.woff2',
   '/fonts/Vazirmatn-UI-SemiBold.woff2', '/fonts/Vazirmatn-UI-Bold.woff2',
@@ -53,12 +53,26 @@ async function navigationResponse(request) {
 
 async function staleWhileRevalidate(request, cacheName = STATIC_CACHE) {
   const cache = await caches.open(cacheName);
-  const cached = await cache.match(request, {ignoreSearch: true});
+  const cached = await cache.match(request);
   const update = fetch(request).then(response => {
     if (response.ok) cache.put(request, response.clone());
     return response;
   }).catch(() => null);
   return cached || await update || await caches.match(asset('offline.html'));
+}
+
+async function staticNetworkFirst(request) {
+  const cache = await caches.open(STATIC_CACHE);
+  try {
+    const response = await fetchWithTimeout(request, 6000);
+    if (response.ok) cache.put(request, response.clone());
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    const url = new URL(request.url);
+    return await cache.match(asset(url.pathname)) || await caches.match(asset('offline.html'));
+  }
 }
 
 async function apiNetworkFirst(request, fallbackPath = null) {
@@ -86,6 +100,11 @@ self.addEventListener('fetch', event => {
 
   if (request.mode === 'navigate') {
     event.respondWith(navigationResponse(request));
+    return;
+  }
+
+  if (url.pathname === '/styles-v0.18.css' || url.pathname === '/app-v0.18.js') {
+    event.respondWith(staticNetworkFirst(request));
     return;
   }
 

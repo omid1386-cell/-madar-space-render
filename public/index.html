@@ -3,7 +3,41 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#081511">
+  <meta name="theme-color" id="themeColorMeta" content="#081511">
+  <script>
+    (()=>{
+      const normalize=value=>value==='light'?'light':'dark';
+      const syncButton=()=>{
+        const button=document.getElementById('themeToggle');if(!button)return;
+        const light=document.documentElement.dataset.theme==='light',english=document.documentElement.lang==='en';
+        const label=english?(light?'Switch to dark mode':'Switch to light mode'):(light?'فعال‌کردن حالت شب':'فعال‌کردن حالت روز');
+        button.setAttribute('aria-label',label);button.title=label;
+      };
+      const apply=(value,persist=true,userAction=false)=>{
+        const theme=normalize(value);document.documentElement.dataset.theme=theme;
+        if(persist)try{localStorage.setItem('madar-theme',theme)}catch{}
+        document.getElementById('themeColorMeta')?.setAttribute('content',theme==='light'?'#f1f6f3':'#081511');
+        const apple=document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');if(apple)apple.content=theme==='light'?'default':'black-translucent';
+        syncButton();window.dispatchEvent(new CustomEvent('madarthemechange',{detail:{theme,userAction}}));return theme;
+      };
+      let saved=null;try{saved=localStorage.getItem('madar-theme')}catch{}
+      window.MadarTheme={apply,toggle:()=>apply(document.documentElement.dataset.theme==='light'?'dark':'light',true,true),syncButton};
+      apply(saved==='light'||saved==='dark'?saved:'dark',false,false);
+      document.addEventListener('DOMContentLoaded',syncButton,{once:true});
+      if('serviceWorker' in navigator){
+        navigator.serviceWorker.addEventListener('controllerchange',()=>{const key='madar-sw-reload-0.18.0';if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload()}});
+        window.addEventListener('load',async()=>{
+          try{
+            const migration='0.18.0',marker='madar-cache-migration';
+            if(localStorage.getItem(marker)!==migration&&'caches' in window){
+              const keys=await caches.keys();await Promise.all(keys.filter(key=>key.startsWith('madar-')&&!key.endsWith(migration)).map(key=>caches.delete(key)));localStorage.setItem(marker,migration);
+            }
+            const reg=await navigator.serviceWorker.getRegistration();await reg?.update();
+          }catch{}
+        },{once:true});
+      }
+    })();
+  </script>
   <meta name="description" content="مدار؛ آکادمی و رصدخانه پژوهشی برای یادگیری مهندسی فضا، پرتابگرها، مدارها، تاریخچه پرتاب‌ها و تحلیل شکست.">
   <meta name="application-name" content="مدار">
   <meta name="mobile-web-app-capable" content="yes">
@@ -15,7 +49,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles-v0.18.css">
+  <style id="themeCritical">html[data-theme="light"]{color-scheme:light;--bg:#eef4f1;--bg-2:#e8f0ec;--panel:#fff;--panel-2:#f5f9f7;--panel-3:#edf5f1;--line:#b7cdc4;--line-soft:#d4e3dd;--text:#13271f;--muted:#405e53;--subtle:#536f65;--green:#056649;--green-2:#087a59;--cyan:#086d8c;--lime:#4f7519;--gold:#7c5205;--coral:#b94336;--violet:#5942a8;--danger:#b93632}html[data-theme="light"] body{background:#eef4f1;color:#13271f}html[data-theme="light"] .sidebar{background:#f8fbf9;border-color:#d8e5df}html[data-theme="light"] .topbar{background:rgba(248,251,249,.94);border-color:#d8e5df}</style>
 </head>
 <body>
   <svg class="svg-defs" aria-hidden="true">
@@ -40,6 +75,8 @@
     <symbol id="i-close" viewBox="0 0 24 24"><path d="m5 5 14 14M19 5 5 19"/></symbol>
     <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4V3Z"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M18.5 10A7 7 0 0 0 6 7M5.5 14A7 7 0 0 0 18 17"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.4 15.2A8.5 8.5 0 0 1 8.8 3.6 8.6 8.6 0 1 0 20.4 15.2Z"/></symbol>
   </svg>
 
   <div class="app-shell">
@@ -75,7 +112,7 @@
         <div><small>چالش این هفته</small><strong>طراحی انتقال هوهمن</strong></div>
         <button data-view="tools" data-tool-tab="hohmann"><svg><use href="#i-arrow"/></svg></button>
       </div>
-      <div class="sidebar-foot"><span class="status-led"></span> داده زنده با کش هوشمند <b>v0.9</b></div>
+      <div class="sidebar-foot"><span class="status-led"></span> داده زنده با کش هوشمند <b>v0.18 آزمایشی</b></div>
     </aside>
 
     <div class="sidebar-scrim" id="sidebarScrim"></div>
@@ -86,6 +123,7 @@
         <div class="topbar-title"><span id="pageEyebrow">مرکز فرمان</span><strong id="pageTitle">نمای کلی</strong></div>
         <div class="topbar-actions">
           <div class="language-switch" id="languageSwitch" role="group" aria-label="انتخاب زبان"><button data-lang="fa" class="active">فا</button><button data-lang="en">EN</button></div>
+          <button class="icon-btn theme-toggle" id="themeToggle" type="button" onclick="event.stopImmediatePropagation();window.MadarTheme.toggle();return false" aria-label="فعال‌کردن حالت روز" title="فعال‌کردن حالت روز"><svg class="theme-icon theme-icon-sun"><use href="#i-sun"/></svg><svg class="theme-icon theme-icon-moon"><use href="#i-moon"/></svg></button>
           <button class="install-app-btn" id="installAppBtn" hidden><svg><use href="#i-download"/></svg><span>نصب مدار</span></button>
           <label class="global-search"><svg><use href="#i-search"/></svg><input id="globalSearch" type="search" placeholder="جست‌وجوی مفهوم، مأموریت یا پرتابگر…"><kbd>/</kbd></label>
           <button class="icon-btn" id="bookmarkBtn" aria-label="نشان‌شده‌ها"><svg><use href="#i-bookmark"/></svg><span id="bookmarkCount">۰</span></button>
@@ -174,7 +212,7 @@
           <div class="glossary-category-row" id="glossaryCategoryRow"></div>
           <div class="section-title-row"><div><span class="section-kicker">TERMINOLOGY INDEX</span><h2>فهرست اصطلاحات</h2></div><small id="glossaryResultCount">—</small></div>
           <div class="glossary-grid" id="glossaryGrid"></div>
-          <div class="glossary-rule-note"><svg><use href="#i-info"/></svg><div><strong>قاعده نگارش مدار</strong><p>در متن آموزشی، مفهوم فارسی ابتدا می‌آید. نام اصلی و شکل اختصاری در یک نشان مستقل و با جهت نوشتار جدا نمایش داده می‌شوند. با لمس هر نشان، توضیح کامل باز می‌شود.</p></div></div>
+          <div class="glossary-rule-note"><svg><use href="#i-info"/></svg><div><strong>قاعده نگارش مدار</strong><p>در متن آموزشی، اصطلاح فنی فقط با نام اصلی انگلیسی و به‌صورت پیوند داخلی نمایش داده می‌شود. معادل و توضیح کامل فارسی در صفحه اختصاصی همان اصطلاح قرار دارد.</p></div></div>
         </section>
 
         <!-- Three-level knowledge library -->
@@ -355,9 +393,20 @@
               <div class="input-orbit"><span class="youtube-core"><svg><use href="#i-video"/></svg></span><i></i><i></i></div>
               <h2>لینک ویدئو را وارد کنید</h2><p>ویدئوهای دانشگاهی، مستندات مأموریت و تحلیل پرتاب بهترین نتیجه را می‌دهند.</p>
               <form id="summaryForm"><label><span>YouTube URL</span><div class="url-input"><svg><use href="#i-video"/></svg><input id="youtubeUrl" type="url" placeholder="https://youtube.com/watch?v=…" required><button class="btn primary" type="submit">ساخت یادداشت <svg><use href="#i-arrow"/></svg></button></div></label></form>
-              <div class="summary-options"><label><input type="checkbox" checked disabled><span>خلاصه نکته‌ای فارسی</span></label><label><input type="checkbox" checked disabled><span>فصل‌بندی زمانی</span></label><label><input type="checkbox" checked disabled><span>واژه‌نامه فنی</span></label></div>
+              <div class="summary-options"><label><input type="checkbox" checked disabled><span>خلاصه فارسی</span></label><label><input type="checkbox" checked disabled><span>متن کامل</span></label><label><input type="checkbox" checked disabled><span>نمایش انگلیسی</span></label></div>
+              <details class="manual-transcript-panel" id="manualTranscriptPanel">
+                <summary><span>اگر دریافت خودکار ممکن نبود</span><small>ورود متن زیرنویس</small></summary>
+                <div class="manual-transcript-body">
+                  <p id="manualTranscriptStatus">متن زیرنویس را از بخش نمایش متن ویدئو کپی کنید؛ زمان‌ها می‌توانند همراه متن باشند.</p>
+                  <ol class="manual-transcript-steps"><li>در صفحه ویدئو گزینه <b dir="ltr">Show transcript</b> را باز کنید.</li><li>تمام متن زیرنویس را کپی و در کادر پایین جای‌گذاری کنید.</li><li>دکمه ترجمه و خلاصه‌سازی را بزنید.</li></ol>
+                  <label><span>عنوان اختیاری</span><input id="manualTranscriptTitle" type="text" maxlength="300" placeholder="عنوان ویدئو"></label>
+                  <label><span>زبان متن</span><select id="manualTranscriptLanguage"><option value="en">انگلیسی</option><option value="fa">فارسی</option><option value="auto">تشخیص خودکار</option></select></label>
+                  <label class="manual-transcript-text"><span>متن زیرنویس</span><textarea id="manualTranscriptText" rows="9" maxlength="160000" placeholder="0:00&#10;متن نخستین جمله…&#10;0:08&#10;متن جمله بعدی…"></textarea></label>
+                  <button class="btn primary small" id="manualSummarySubmit" type="button">ترجمه و خلاصه‌سازی متن <svg><use href="#i-arrow"/></svg></button>
+                </div>
+              </details>
               <div class="try-demo"><span>می‌خواهید ابتدا نتیجه را ببینید؟</span><button id="demoSummary">اجرای نمونه ۷۹ ثانیه‌ای</button></div>
-              <div class="privacy-note"><svg><use href="#i-info"/></svg><span>فقط URL به سرویس محلی ارسال می‌شود. ویدئو دانلود نمی‌شود؛ کپشن عمومی پردازش می‌گردد.</span></div>
+              <div class="privacy-note"><svg><use href="#i-info"/></svg><span>ابتدا دریافت خودکار امتحان می‌شود. اگر یوتیوب نشانی کارساز را محدود کند، متن واردشده بدون دانلود ویدئو پردازش می‌شود.</span></div>
             </div>
             <div class="summary-output-panel" id="summaryOutput">
               <div class="empty-output"><div class="note-stack"><i></i><i></i><i></i></div><h3>یادداشت ساخت‌یافته اینجا ظاهر می‌شود</h3><p>خلاصه جای مشاهده بخش‌های حساس یا مراجعه به منبع اصلی را نمی‌گیرد.</p></div>
@@ -404,6 +453,20 @@
 
   <div class="glossary-drawer" id="glossaryDrawer" aria-hidden="true"><div class="glossary-drawer-scrim" id="closeGlossaryScrim"></div><aside class="glossary-drawer-panel"><button class="modal-close" id="closeGlossaryDrawer"><svg><use href="#i-close"/></svg></button><div id="glossaryDrawerContent"></div></aside></div>
 
+  <div class="orbital-lab-reader" id="orbitalLabReader" aria-hidden="true" data-no-auto-translate>
+    <header class="orbital-lab-topbar"><button class="icon-btn" id="closeOrbitalLab" type="button" aria-label="بستن آزمایشگاه"><svg><use href="#i-close"/></svg></button><div><span>ORBITAL LABORATORY</span><strong id="orbitalLabTitle">آزمایشگاه مکانیک مداری</strong></div><small id="orbitalLabStatus">نسخه آزمایشی</small></header>
+    <main class="orbital-lab-content" id="orbitalLabContent"></main>
+  </div>
+
+  <div class="agency-article-reader" id="agencyArticleReader" aria-hidden="true" data-no-auto-translate>
+    <header class="agency-article-topbar">
+      <button class="icon-btn" id="agencyArticleBack" type="button" aria-label="بازگشت به خبرها"><svg><use href="#i-arrow"/></svg></button>
+      <div class="agency-article-top-title"><span id="agencyArticleTopAgency">NASA / ESA</span><strong id="agencyArticleTopTitle">جزئیات مطلب رسمی</strong></div>
+      <div class="agency-article-top-actions"><button class="icon-btn" id="copyAgencyArticleLink" type="button" title="کپی پیوند"><svg><use href="#i-source"/></svg></button><a class="btn primary small" id="agencyArticleOfficialLink" href="#" target="_blank" rel="noreferrer">منبع رسمی <svg><use href="#i-external"/></svg></a></div>
+    </header>
+    <main class="agency-article-content" id="agencyArticleContent"></main>
+  </div>
+
   <div class="knowledge-reader" id="knowledgeReader" aria-hidden="true">
     <header class="knowledge-reader-top"><button class="icon-btn" id="closeKnowledgeReader"><svg><use href="#i-close"/></svg></button><div><span id="knowledgeReaderDomain">کتابخانه دانش</span><strong id="knowledgeReaderTitle">موضوع</strong></div><span class="knowledge-reader-level" id="knowledgeReaderLevel">مقدماتی</span></header>
     <div class="knowledge-reader-layout"><main class="knowledge-reader-main" id="knowledgeReaderMain"></main><aside class="knowledge-reader-side"><span class="section-kicker">RELATED TOPICS</span><div id="relatedKnowledgeTopics"></div><section><strong>ترتیب مطالعه</strong><p>ابتدا پیش‌نیازها را مرور کنید، سپس روابط و مثال را بررسی و در پایان خروجی‌های یادگیری را برای خود توضیح دهید.</p></section></aside></div>
@@ -434,10 +497,18 @@
   <script src="launch-detail.js"></script>
   <script src="orbit-detail.js"></script>
   <script src="learning-content.js"></script>
+  <script src="orbital-mechanics-stable.js"></script>
+  <script src="orbital-mechanics-course.js"></script>
+  <script src="orbital-mechanics-phase2.js"></script>
+  <script src="orbital-mechanics-phase3.js"></script>
+  <script src="orbital-mechanics-phase4.js"></script>
+  <script src="orbital-mechanics-phase5.js"></script>
+  <script src="orbital-phase5-math.js"></script>
+  <script src="orbital-labs.js"></script>
   <script src="satellite-data.js"></script>
   <script src="knowledge-data.js"></script>
   <script src="terminology-data.js"></script>
   <script src="failure-causes.js"></script>
-  <script src="app.js"></script>
+  <script src="app-v0.18.js"></script>
 </body>
 </html>
